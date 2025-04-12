@@ -20,6 +20,10 @@ KDE
 └── 部署引擎 (Ansible)
 ```
 
+![系统架构](images/arch.png)
+
+![功能模块](images/module.png)
+
 ## 核心功能
 
 ### 1. Kubernetes 部署管理
