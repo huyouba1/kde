@@ -1,0 +1,400 @@
+{{define "content"}}
+<div class="container-fluid">
+    <!-- 页面标题和操作按钮 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>集群详情</h2>
+            <p class="text-muted" id="clusterName">加载中...</p>
+        </div>
+        <div>
+            <button class="btn btn-outline-primary me-2" onclick="refreshCluster()">
+                <i class="fas fa-sync-alt me-2"></i>刷新
+            </button>
+            <button class="btn btn-outline-danger" onclick="deleteCluster()">
+                <i class="fas fa-trash me-2"></i>删除集群
+            </button>
+        </div>
+    </div>
+
+    <!-- 集群概览 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">节点数量</h6>
+                    <h3 class="mb-0" id="nodeCount">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">CPU 使用率</h6>
+                    <h3 class="mb-0" id="cpuUsage">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">内存使用率</h6>
+                    <h3 class="mb-0" id="memoryUsage">-</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title text-muted">存储使用率</h6>
+                    <h3 class="mb-0" id="storageUsage">-</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 节点列表 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">节点列表</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="nodesTable">
+                    <thead>
+                        <tr>
+                            <th>节点名称</th>
+                            <th>状态</th>
+                            <th>角色</th>
+                            <th>CPU</th>
+                            <th>内存</th>
+                            <th>存储</th>
+                            <th>操作系统</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="8" class="text-center">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工作负载 -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">工作负载</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="workloadsTable">
+                    <thead>
+                        <tr>
+                            <th>名称</th>
+                            <th>类型</th>
+                            <th>命名空间</th>
+                            <th>副本数</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="7" class="text-center">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 事件 -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">事件</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="eventsTable">
+                    <thead>
+                        <tr>
+                            <th>时间</th>
+                            <th>类型</th>
+                            <th>对象</th>
+                            <th>原因</th>
+                            <th>消息</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" class="text-center">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// 获取集群ID
+const clusterId = window.location.pathname.split('/').pop();
+
+// 加载集群详情
+function loadClusterDetails() {
+    fetch(`/api/v1/clusters/${clusterId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('clusterName').textContent = data.name;
+            document.getElementById('nodeCount').textContent = data.nodeCount;
+            document.getElementById('cpuUsage').textContent = data.cpuUsage + '%';
+            document.getElementById('memoryUsage').textContent = data.memoryUsage + '%';
+            document.getElementById('storageUsage').textContent = data.storageUsage + '%';
+        })
+        .catch(error => {
+            console.error('Error loading cluster details:', error);
+            alert('加载集群详情失败');
+        });
+}
+
+// 加载节点列表
+function loadNodes() {
+    fetch(`/api/v1/clusters/${clusterId}/nodes`)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#nodesTable tbody');
+            if (!data.nodes || data.nodes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">暂无节点</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.nodes.map(node => `
+                <tr>
+                    <td>${node.name}</td>
+                    <td>
+                        <span class="badge ${getNodeStatusBadgeClass(node.status)}">
+                            ${node.status}
+                        </span>
+                    </td>
+                    <td>${node.role}</td>
+                    <td>${node.cpuUsage}%</td>
+                    <td>${node.memoryUsage}%</td>
+                    <td>${node.storageUsage}%</td>
+                    <td>${node.os}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="viewNodeDetails('${node.name}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="cordonNode('${node.name}')">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading nodes:', error);
+            const tbody = document.querySelector('#nodesTable tbody');
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">加载失败</td></tr>';
+        });
+}
+
+// 加载工作负载
+function loadWorkloads() {
+    fetch(`/api/v1/clusters/${clusterId}/workloads`)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#workloadsTable tbody');
+            if (!data.workloads || data.workloads.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">暂无工作负载</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.workloads.map(workload => `
+                <tr>
+                    <td>${workload.name}</td>
+                    <td>${workload.type}</td>
+                    <td>${workload.namespace}</td>
+                    <td>${workload.replicas}</td>
+                    <td>
+                        <span class="badge ${getWorkloadStatusBadgeClass(workload.status)}">
+                            ${workload.status}
+                        </span>
+                    </td>
+                    <td>${formatDate(workload.createdAt)}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="viewWorkload('${workload.name}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteWorkload('${workload.name}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading workloads:', error);
+            const tbody = document.querySelector('#workloadsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">加载失败</td></tr>';
+        });
+}
+
+// 加载事件
+function loadEvents() {
+    fetch(`/api/v1/clusters/${clusterId}/events`)
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#eventsTable tbody');
+            if (!data.events || data.events.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">暂无事件</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.events.map(event => `
+                <tr>
+                    <td>${formatDate(event.timestamp)}</td>
+                    <td>${event.type}</td>
+                    <td>${event.object}</td>
+                    <td>${event.reason}</td>
+                    <td>${event.message}</td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading events:', error);
+            const tbody = document.querySelector('#eventsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">加载失败</td></tr>';
+        });
+}
+
+// 获取节点状态徽章样式
+function getNodeStatusBadgeClass(status) {
+    switch (status.toLowerCase()) {
+        case 'ready':
+            return 'bg-success';
+        case 'notready':
+            return 'bg-danger';
+        case 'unknown':
+            return 'bg-warning';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+// 获取工作负载状态徽章样式
+function getWorkloadStatusBadgeClass(status) {
+    switch (status.toLowerCase()) {
+        case 'running':
+            return 'bg-success';
+        case 'pending':
+            return 'bg-warning';
+        case 'failed':
+            return 'bg-danger';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+// 格式化日期
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleString('zh-CN');
+}
+
+// 查看节点详情
+function viewNodeDetails(nodeName) {
+    window.location.href = `/clusters/${clusterId}/nodes/${nodeName}`;
+}
+
+// 隔离节点
+function cordonNode(nodeName) {
+    if (!confirm('确定要隔离这个节点吗？')) {
+        return;
+    }
+
+    fetch(`/api/v1/clusters/${clusterId}/nodes/${nodeName}/cordon`, {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadNodes();
+    })
+    .catch(error => {
+        console.error('Error cordoning node:', error);
+        alert('操作失败');
+    });
+}
+
+// 查看工作负载详情
+function viewWorkload(workloadName) {
+    window.location.href = `/clusters/${clusterId}/workloads/${workloadName}`;
+}
+
+// 删除工作负载
+function deleteWorkload(workloadName) {
+    if (!confirm('确定要删除这个工作负载吗？')) {
+        return;
+    }
+
+    fetch(`/api/v1/clusters/${clusterId}/workloads/${workloadName}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadWorkloads();
+    })
+    .catch(error => {
+        console.error('Error deleting workload:', error);
+        alert('删除失败');
+    });
+}
+
+// 刷新集群
+function refreshCluster() {
+    loadClusterDetails();
+    loadNodes();
+    loadWorkloads();
+    loadEvents();
+}
+
+// 删除集群
+function deleteCluster() {
+    if (!confirm('确定要删除这个集群吗？此操作不可恢复。')) {
+        return;
+    }
+
+    fetch(`/api/v1/clusters/${clusterId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        window.location.href = '/clusters';
+    })
+    .catch(error => {
+        console.error('Error deleting cluster:', error);
+        alert('删除失败');
+    });
+}
+
+// 页面加载时获取数据
+document.addEventListener('DOMContentLoaded', function() {
+    loadClusterDetails();
+    loadNodes();
+    loadWorkloads();
+    loadEvents();
+});
+</script>
+{{end}} 

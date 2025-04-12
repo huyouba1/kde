@@ -1,0 +1,360 @@
+{{define "content"}}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-3">
+            <!-- 设置导航 -->
+            <div class="list-group">
+                <a href="#general" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                    <i class="fas fa-cog me-2"></i>常规设置
+                </a>
+                <a href="#security" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="fas fa-shield-alt me-2"></i>安全设置
+                </a>
+                <a href="#notifications" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="fas fa-bell me-2"></i>通知设置
+                </a>
+                <a href="#backup" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="fas fa-database me-2"></i>备份设置
+                </a>
+                <a href="#plugins" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                    <i class="fas fa-puzzle-piece me-2"></i>插件管理
+                </a>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <!-- 设置内容 -->
+            <div class="tab-content">
+                <!-- 常规设置 -->
+                <div class="tab-pane fade show active" id="general">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">常规设置</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="generalSettingsForm">
+                                <div class="mb-3">
+                                    <label class="form-label">系统名称</label>
+                                    <input type="text" class="form-control" name="systemName" value="{{.Settings.SystemName}}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">时区</label>
+                                    <select class="form-select" name="timezone">
+                                        <option value="Asia/Shanghai" {{if eq .Settings.Timezone "Asia/Shanghai"}}selected{{end}}>中国标准时间 (CST)</option>
+                                        <option value="UTC" {{if eq .Settings.Timezone "UTC"}}selected{{end}}>协调世界时 (UTC)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">语言</label>
+                                    <select class="form-select" name="language">
+                                        <option value="zh" {{if eq .Settings.Language "zh"}}selected{{end}}>中文</option>
+                                        <option value="en" {{if eq .Settings.Language "en"}}selected{{end}}>English</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">保存设置</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 安全设置 -->
+                <div class="tab-pane fade" id="security">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">安全设置</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="securitySettingsForm">
+                                <div class="mb-3">
+                                    <label class="form-label">密码策略</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="requireStrongPassword" {{if .Settings.RequireStrongPassword}}checked{{end}}>
+                                        <label class="form-check-label">要求强密码</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">会话超时时间（分钟）</label>
+                                    <input type="number" class="form-control" name="sessionTimeout" value="{{.Settings.SessionTimeout}}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">最大登录尝试次数</label>
+                                    <input type="number" class="form-control" name="maxLoginAttempts" value="{{.Settings.MaxLoginAttempts}}">
+                                </div>
+                                <button type="submit" class="btn btn-primary">保存设置</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 通知设置 -->
+                <div class="tab-pane fade" id="notifications">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">通知设置</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="notificationSettingsForm">
+                                <div class="mb-3">
+                                    <label class="form-label">邮件通知</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="emailNotifications" {{if .Settings.EmailNotifications}}checked{{end}}>
+                                        <label class="form-check-label">启用邮件通知</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">SMTP服务器</label>
+                                    <input type="text" class="form-control" name="smtpServer" value="{{.Settings.SmtpServer}}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">SMTP端口</label>
+                                    <input type="number" class="form-control" name="smtpPort" value="{{.Settings.SmtpPort}}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">通知邮箱</label>
+                                    <input type="email" class="form-control" name="notificationEmail" value="{{.Settings.NotificationEmail}}">
+                                </div>
+                                <button type="submit" class="btn btn-primary">保存设置</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 备份设置 -->
+                <div class="tab-pane fade" id="backup">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">备份设置</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="backupSettingsForm">
+                                <div class="mb-3">
+                                    <label class="form-label">自动备份</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="autoBackup" {{if .Settings.AutoBackup}}checked{{end}}>
+                                        <label class="form-check-label">启用自动备份</label>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">备份频率</label>
+                                    <select class="form-select" name="backupFrequency">
+                                        <option value="daily" {{if eq .Settings.BackupFrequency "daily"}}selected{{end}}>每天</option>
+                                        <option value="weekly" {{if eq .Settings.BackupFrequency "weekly"}}selected{{end}}>每周</option>
+                                        <option value="monthly" {{if eq .Settings.BackupFrequency "monthly"}}selected{{end}}>每月</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">备份保留时间（天）</label>
+                                    <input type="number" class="form-control" name="backupRetentionDays" value="{{.Settings.BackupRetentionDays}}">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">备份存储路径</label>
+                                    <input type="text" class="form-control" name="backupPath" value="{{.Settings.BackupPath}}">
+                                </div>
+                                <button type="submit" class="btn btn-primary">保存设置</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 插件管理 -->
+                <div class="tab-pane fade" id="plugins">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">插件管理</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="pluginsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>插件名称</th>
+                                            <th>版本</th>
+                                            <th>状态</th>
+                                            <th>操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td colspan="4" class="text-center">加载中...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#installPluginModal">
+                                    <i class="fas fa-plus me-2"></i>安装插件
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 安装插件模态框 -->
+<div class="modal fade" id="installPluginModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">安装插件</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="installPluginForm">
+                    <div class="mb-3">
+                        <label class="form-label">插件名称</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">版本</label>
+                        <input type="text" class="form-control" name="version" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">插件文件</label>
+                        <input type="file" class="form-control" name="file" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="installPluginBtn">安装</button>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// 加载插件列表
+function loadPlugins() {
+    fetch('/api/v1/plugins')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#pluginsTable tbody');
+            if (!data.plugins || data.plugins.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">暂无插件</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.plugins.map(plugin => `
+                <tr>
+                    <td>${plugin.name}</td>
+                    <td>${plugin.version}</td>
+                    <td>
+                        <span class="badge ${plugin.enabled ? 'bg-success' : 'bg-secondary'}">
+                            ${plugin.enabled ? '已启用' : '已禁用'}
+                        </span>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="togglePlugin('${plugin.name}', ${!plugin.enabled})">
+                                <i class="fas fa-power-off"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="uninstallPlugin('${plugin.name}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading plugins:', error);
+            const tbody = document.querySelector('#pluginsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">加载失败</td></tr>';
+        });
+}
+
+// 切换插件状态
+function togglePlugin(name, enable) {
+    fetch(`/api/v1/plugins/${name}/toggle`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ enable })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadPlugins();
+    })
+    .catch(error => {
+        console.error('Error toggling plugin:', error);
+        alert('操作失败');
+    });
+}
+
+// 卸载插件
+function uninstallPlugin(name) {
+    if (!confirm('确定要卸载这个插件吗？')) {
+        return;
+    }
+
+    fetch(`/api/v1/plugins/${name}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadPlugins();
+    })
+    .catch(error => {
+        console.error('Error uninstalling plugin:', error);
+        alert('卸载失败');
+    });
+}
+
+// 安装插件
+document.getElementById('installPluginBtn').addEventListener('click', function() {
+    const form = document.getElementById('installPluginForm');
+    const formData = new FormData(form);
+    
+    fetch('/api/v1/plugins', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        $('#installPluginModal').modal('hide');
+        loadPlugins();
+    })
+    .catch(error => {
+        console.error('Error installing plugin:', error);
+        alert('安装失败');
+    });
+});
+
+// 保存设置
+document.querySelectorAll('form[id$="SettingsForm"]').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+        const settingType = this.id.replace('SettingsForm', '');
+
+        fetch(`/api/v1/settings/${settingType}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+        })
+        .catch(error => {
+            console.error('Error saving settings:', error);
+            alert('保存失败');
+        });
+    });
+});
+
+// 页面加载时获取数据
+document.addEventListener('DOMContentLoaded', loadPlugins);
+</script>
+{{end}} 

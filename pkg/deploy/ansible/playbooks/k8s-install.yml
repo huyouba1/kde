@@ -1,0 +1,222 @@
+---
+# Kubernetes安装Playbook
+# 用于在目标主机上安装和配置Kubernetes集群
+
+- name: 准备所有节点
+  hosts: all
+  become: true
+  tasks:
+    - name: 更新apt缓存
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+
+    - name: 更新yum缓存
+      yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+
+    - name: 安装基础软件包
+      package:
+        name:
+          - curl
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - lsb-release
+          - python3
+          - python3-pip
+        state: present
+
+    - name: 禁用swap
+      shell: swapoff -a
+
+    - name: 在fstab中禁用swap
+      replace:
+        path: /etc/fstab
+        regexp: '^([^#].*\sswap\s.*)'  
+        replace: '# \1'
+
+    - name: 加载内核模块
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - overlay
+        - br_netfilter
+
+    - name: 设置内核参数
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      with_items:
+        - { key: "net.bridge.bridge-nf-call-iptables", value: "1" }
+        - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+        - { key: "net.ipv4.ip_forward", value: "1" }
+
+- name: 安装容器运行时
+  hosts: all
+  become: true
+  tasks:
+    - name: 添加Docker GPG密钥 (Debian/Ubuntu)
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: 添加Docker仓库 (Debian/Ubuntu)
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: 添加Docker仓库 (RedHat/CentOS)
+      yum_repository:
+        name: docker-ce
+        description: Docker CE Repository
+        baseurl: https://download.docker.com/linux/centos/{{ ansible_distribution_major_version }}/x86_64/stable
+        gpgcheck: yes
+        gpgkey: https://download.docker.com/linux/centos/gpg
+      when: ansible_os_family == "RedHat"
+
+    - name: 安装Docker
+      package:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: 创建Docker配置目录
+      file:
+        path: /etc/docker
+        state: directory
+        mode: '0755'
+
+    - name: 配置Docker Daemon
+      copy:
+        content: |
+          {
+            "exec-opts": ["native.cgroupdriver=systemd"],
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "100m"
+            },
+            "storage-driver": "overlay2"
+          }
+        dest: /etc/docker/daemon.json
+
+    - name: 启动Docker服务
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+- name: 安装Kubernetes组件
+  hosts: all
+  become: true
+  vars:
+    kubernetes_version: "1.24.0"
+  tasks:
+    - name: 添加Kubernetes GPG密钥 (Debian/Ubuntu)
+      apt_key:
+        url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: 添加Kubernetes仓库 (Debian/Ubuntu)
+      apt_repository:
+        repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: 添加Kubernetes仓库 (RedHat/CentOS)
+      yum_repository:
+        name: kubernetes
+        description: Kubernetes Repository
+        baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+        gpgcheck: yes
+        gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+      when: ansible_os_family == "RedHat"
+
+    - name: 安装Kubernetes组件
+      package:
+        name:
+          - kubelet={{ kubernetes_version }}-00
+          - kubeadm={{ kubernetes_version }}-00
+          - kubectl={{ kubernetes_version }}-00
+        state: present
+
+    - name: 启动kubelet服务
+      systemd:
+        name: kubelet
+        state: started
+        enabled: yes
+
+- name: 初始化Kubernetes主节点
+  hosts: master
+  become: true
+  tasks:
+    - name: 初始化Kubernetes集群
+      shell: >
+        kubeadm init 
+        --pod-network-cidr=10.244.0.0/16 
+        --kubernetes-version={{ kubernetes_version }}
+      register: kubeadm_init
+
+    - name: 创建.kube目录
+      file:
+        path: /home/{{ ansible_user }}/.kube
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: 复制admin.conf到用户目录
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/{{ ansible_user }}/.kube/config
+        remote_src: yes
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0644'
+
+    - name: 安装Flannel网络插件
+      shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+      become: false
+
+    - name: 获取加入集群的命令
+      shell: kubeadm token create --print-join-command
+      register: join_command
+
+    - name: 保存加入命令到变量
+      set_fact:
+        join_command: "{{ join_command.stdout }}"
+
+- name: 加入工作节点到集群
+  hosts: worker
+  become: true
+  vars:
+    join_command: "{{ hostvars[groups['master'][0]]['join_command'] }}"
+  tasks:
+    - name: 加入Kubernetes集群
+      shell: "{{ join_command }}"
+      register: join_result
+
+- name: 验证集群状态
+  hosts: master
+  become: false
+  tasks:
+    - name: 等待所有节点就绪
+      shell: kubectl get nodes
+      register: nodes_status
+      until: nodes_status.rc == 0 and (nodes_status.stdout | regex_search('NotReady') is not defined)
+      retries: 10
+      delay: 30
+
+    - name: 显示集群状态
+      debug:
+        msg: "{{ nodes_status.stdout_lines }}"

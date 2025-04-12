@@ -1,0 +1,293 @@
+{{define "content"}}
+<div class="container-fluid">
+    <!-- 页面标题和操作按钮 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>部署管理</h2>
+            <p class="text-muted">管理您的应用部署</p>
+        </div>
+        <div>
+            <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#createDeploymentModal">
+                <i class="fas fa-plus me-2"></i>创建部署
+            </button>
+            <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#importDeploymentModal">
+                <i class="fas fa-file-import me-2"></i>导入部署
+            </button>
+        </div>
+    </div>
+
+    <!-- 部署列表 -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="deploymentsTable">
+                    <thead>
+                        <tr>
+                            <th>部署名称</th>
+                            <th>集群</th>
+                            <th>状态</th>
+                            <th>副本数</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="text-center">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 创建部署模态框 -->
+<div class="modal fade" id="createDeploymentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">创建新部署</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createDeploymentForm">
+                    <div class="mb-3">
+                        <label class="form-label">部署名称</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">选择集群</label>
+                        <select class="form-select" name="cluster" required>
+                            <option value="">请选择集群</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">部署方式</label>
+                        <select class="form-select" name="deployType" required>
+                            <option value="yaml">YAML</option>
+                            <option value="helm">Helm</option>
+                            <option value="kustomize">Kustomize</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">部署配置</label>
+                        <textarea class="form-control" name="config" rows="10" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="createDeploymentBtn">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导入部署模态框 -->
+<div class="modal fade" id="importDeploymentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">导入部署</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="importDeploymentForm">
+                    <div class="mb-3">
+                        <label class="form-label">选择文件</label>
+                        <input type="file" class="form-control" name="file" accept=".yaml,.yml,.json" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="importDeploymentBtn">导入</button>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// 加载部署列表
+function loadDeployments() {
+    fetch('/api/v1/deployments')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#deploymentsTable tbody');
+            if (!data.deployments || data.deployments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center">暂无部署</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.deployments.map(deployment => `
+                <tr>
+                    <td>${deployment.name}</td>
+                    <td>${deployment.cluster}</td>
+                    <td>
+                        <span class="badge ${getStatusBadgeClass(deployment.status)}">
+                            ${deployment.status}
+                        </span>
+                    </td>
+                    <td>${deployment.replicas}</td>
+                    <td>${formatDate(deployment.createdAt)}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="viewDeployment('${deployment.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-success" onclick="scaleDeployment('${deployment.id}')">
+                                <i class="fas fa-expand-arrows-alt"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteDeployment('${deployment.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading deployments:', error);
+            const tbody = document.querySelector('#deploymentsTable tbody');
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">加载失败</td></tr>';
+        });
+}
+
+// 加载集群列表
+function loadClusters() {
+    fetch('/api/v1/clusters')
+        .then(response => response.json())
+        .then(data => {
+            const select = document.querySelector('select[name="cluster"]');
+            select.innerHTML = '<option value="">请选择集群</option>' +
+                data.clusters.map(cluster => `
+                    <option value="${cluster.id}">${cluster.id}</option>
+                `).join('');
+        })
+        .catch(error => console.error('Error loading clusters:', error));
+}
+
+// 获取状态徽章样式
+function getStatusBadgeClass(status) {
+    switch (status.toLowerCase()) {
+        case 'running':
+            return 'bg-success';
+        case 'creating':
+            return 'bg-info';
+        case 'error':
+            return 'bg-danger';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+// 格式化日期
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleString('zh-CN');
+}
+
+// 查看部署详情
+function viewDeployment(id) {
+    window.location.href = `/deployments/${id}`;
+}
+
+// 扩缩容部署
+function scaleDeployment(id) {
+    const replicas = prompt('请输入新的副本数：');
+    if (!replicas) return;
+
+    fetch(`/api/v1/deployments/${id}/scale`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ replicas: parseInt(replicas) })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadDeployments();
+    })
+    .catch(error => {
+        console.error('Error scaling deployment:', error);
+        alert('扩缩容失败');
+    });
+}
+
+// 删除部署
+function deleteDeployment(id) {
+    if (!confirm('确定要删除这个部署吗？')) {
+        return;
+    }
+
+    fetch(`/api/v1/deployments/${id}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadDeployments();
+    })
+    .catch(error => {
+        console.error('Error deleting deployment:', error);
+        alert('删除失败');
+    });
+}
+
+// 创建部署
+document.getElementById('createDeploymentBtn').addEventListener('click', function() {
+    const form = document.getElementById('createDeploymentForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    fetch('/api/v1/deployments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        $('#createDeploymentModal').modal('hide');
+        loadDeployments();
+    })
+    .catch(error => {
+        console.error('Error creating deployment:', error);
+        alert('创建失败');
+    });
+});
+
+// 导入部署
+document.getElementById('importDeploymentBtn').addEventListener('click', function() {
+    const form = document.getElementById('importDeploymentForm');
+    const formData = new FormData(form);
+    
+    fetch('/api/v1/deployments/import', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        $('#importDeploymentModal').modal('hide');
+        loadDeployments();
+    })
+    .catch(error => {
+        console.error('Error importing deployment:', error);
+        alert('导入失败');
+    });
+});
+
+// 页面加载时获取数据
+document.addEventListener('DOMContentLoaded', function() {
+    loadDeployments();
+    loadClusters();
+});
+</script>
+{{end}} 

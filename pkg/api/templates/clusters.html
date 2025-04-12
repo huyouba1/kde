@@ -1,0 +1,192 @@
+{{define "content"}}
+<div class="container-fluid">
+    <!-- 页面标题和操作按钮 -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>集群管理</h2>
+            <p class="text-muted">管理您的 Kubernetes 集群</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createClusterModal">
+            <i class="fas fa-plus me-2"></i>创建集群
+        </button>
+    </div>
+
+    <!-- 集群列表 -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="clustersTable">
+                    <thead>
+                        <tr>
+                            <th>集群名称</th>
+                            <th>状态</th>
+                            <th>节点数</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td colspan="5" class="text-center">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 创建集群模态框 -->
+<div class="modal fade" id="createClusterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">创建新集群</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createClusterForm">
+                    <div class="mb-3">
+                        <label class="form-label">集群名称</label>
+                        <input type="text" class="form-control" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">节点数量</label>
+                        <input type="number" class="form-control" name="nodeCount" min="1" value="3">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">部署方式</label>
+                        <select class="form-select" name="deployType">
+                            <option value="single">单节点部署</option>
+                            <option value="cluster">多节点部署</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="createClusterBtn">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+// 加载集群列表
+function loadClusters() {
+    fetch('/api/v1/clusters')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.querySelector('#clustersTable tbody');
+            if (!data.clusters || data.clusters.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">暂无集群</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.clusters.map(cluster => `
+                <tr>
+                    <td>${cluster.id}</td>
+                    <td>
+                        <span class="badge ${getStatusBadgeClass(cluster.status)}">
+                            ${cluster.status}
+                        </span>
+                    </td>
+                    <td>${cluster.nodeCount}</td>
+                    <td>${formatDate(cluster.createdAt)}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="viewCluster('${cluster.id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteCluster('${cluster.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(error => {
+            console.error('Error loading clusters:', error);
+            const tbody = document.querySelector('#clustersTable tbody');
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">加载失败</td></tr>';
+        });
+}
+
+// 获取状态徽章样式
+function getStatusBadgeClass(status) {
+    switch (status.toLowerCase()) {
+        case 'running':
+            return 'bg-success';
+        case 'creating':
+            return 'bg-info';
+        case 'error':
+            return 'bg-danger';
+        default:
+            return 'bg-secondary';
+    }
+}
+
+// 格式化日期
+function formatDate(dateStr) {
+    const date = new Date(dateStr);
+    return date.toLocaleString('zh-CN');
+}
+
+// 查看集群详情
+function viewCluster(id) {
+    // TODO: 实现查看集群详情
+    alert('查看集群: ' + id);
+}
+
+// 删除集群
+function deleteCluster(id) {
+    if (!confirm('确定要删除这个集群吗？')) {
+        return;
+    }
+
+    fetch(`/api/v1/clusters/${id}/delete`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        loadClusters();
+    })
+    .catch(error => {
+        console.error('Error deleting cluster:', error);
+        alert('删除失败');
+    });
+}
+
+// 创建集群
+document.getElementById('createClusterBtn').addEventListener('click', function() {
+    const form = document.getElementById('createClusterForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData.entries());
+
+    fetch('/api/v1/deploy/cluster', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        $('#createClusterModal').modal('hide');
+        loadClusters();
+    })
+    .catch(error => {
+        console.error('Error creating cluster:', error);
+        alert('创建失败');
+    });
+});
+
+// 页面加载时获取集群列表
+document.addEventListener('DOMContentLoaded', loadClusters);
+</script>
+{{end}} 
