@@ -2,8 +2,8 @@ package storage
 
 import (
 	"fmt"
+	"github.com/huyouba1/kde/configs"
 
-	"github.com/huyouba1/kde/pkg/storage/config"
 	"github.com/huyouba1/kde/pkg/storage/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -15,7 +15,7 @@ type Factory struct {
 }
 
 // NewFactory 创建存储工厂
-func NewFactory(cfg *config.Config) *Factory {
+func NewFactory(cfg *configs.Config) *Factory {
 	var db *gorm.DB
 	var err error
 
@@ -55,7 +55,7 @@ func (f *Factory) Close() error {
 }
 
 // initSQLite 初始化SQLite数据库
-func initSQLite(cfg config.SQLiteConfig) (*gorm.DB, error) {
+func initSQLite(cfg configs.SQLiteConfig) (*gorm.DB, error) {
 	db, err := gorm.Open(sqlite.Open(cfg.Path), &gorm.Config{})
 	if err != nil {
 		return nil, fmt.Errorf("连接SQLite数据库失败: %v", err)

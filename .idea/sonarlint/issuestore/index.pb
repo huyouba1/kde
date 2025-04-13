@@ -7,8 +7,6 @@ C
 Makefile,8/3/836efb6e25a091dcb4ff8e1dbb2f0be6a5cbf14c
 6
 go.mod,c/4/c47645c391ad0571c40779079363c9d48412e18b
-L
-pkg/storage/config/config.go,5/3/531c8ac637ad95875d9baa8a30fde844e2136c69
 S
 #pkg/api/handler/template_handler.go,8/e/8e61adae873e87c6cdb08216f58218a0b500a2d4
 F

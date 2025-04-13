@@ -3,12 +3,13 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/huyouba1/kde/configs"
 	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/huyouba1/kde/pkg/api"
-	"github.com/huyouba1/kde/pkg/storage/config"
+	"github.com/huyouba1/kde/pkg/storage"
 )
 
 var (
@@ -33,17 +34,24 @@ func main() {
 	fmt.Printf("使用配置文件: %s\n", configFile)
 
 	// 加载配置文件
-	cfg, err := config.LoadConfig(configFile)
+	err = configs.LoadConfig(configFile)
 	if err != nil {
 		log.Fatalf("加载配置文件失败: %v", err)
 	}
 
 	fmt.Println("Kubernetes管理系统服务启动中...")
 	// 创建并启动服务器
-	server, err := api.NewServer(cfg)
+	server, err := api.NewServer(configs.C())
 	if err != nil {
 		log.Fatalf("创建服务器失败: %v", err)
 	}
+
+	// 初始化SQLite数据库管理器
+	sqliteManager, err := storage.NewManager(&configs.C().Database.SQLite)
+	if err != nil {
+		log.Fatalf("初始化SQLite数据库管理器失败: %v", err)
+	}
+	defer sqliteManager.Close()
 
 	if err := server.Start(); err != nil {
 		log.Fatalf("服务器启动失败: %v", err)

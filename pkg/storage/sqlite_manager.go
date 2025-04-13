@@ -1,11 +1,11 @@
-package sqlite
+package storage
 
 import (
 	"fmt"
+	"github.com/huyouba1/kde/configs"
 	"os"
 	"path/filepath"
 
-	"github.com/huyouba1/kde/pkg/storage/config"
 	"github.com/huyouba1/kde/pkg/storage/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -15,11 +15,11 @@ import (
 // Manager SQLite数据库管理器
 type Manager struct {
 	db     *gorm.DB
-	config *config.SQLiteConfig
+	config *configs.SQLiteConfig
 }
 
 // NewManager 创建一个新的SQLite管理器
-func NewManager(cfg *config.SQLiteConfig) (*Manager, error) {
+func NewManager(cfg *configs.SQLiteConfig) (*Manager, error) {
 	// 确保数据库目录存在
 	dbDir := filepath.Dir(cfg.Path)
 	if err := os.MkdirAll(dbDir, 0755); err != nil {

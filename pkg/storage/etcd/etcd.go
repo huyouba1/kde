@@ -3,20 +3,20 @@ package etcd
 import (
 	"context"
 	"fmt"
+	"github.com/huyouba1/kde/configs"
 	"time"
 
-	"github.com/huyouba1/kde/pkg/storage/config"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
 
 // Manager etcd数据库管理器
 type Manager struct {
 	client *clientv3.Client
-	config *config.EtcdConfig
+	config *configs.EtcdConfig
 }
 
 // NewManager 创建一个新的etcd管理器
-func NewManager(cfg *config.EtcdConfig) (*Manager, error) {
+func NewManager(cfg *configs.EtcdConfig) (*Manager, error) {
 	// 创建etcd客户端
 	client, err := clientv3.New(clientv3.Config{
 		Endpoints:   cfg.Endpoints,

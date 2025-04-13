@@ -3,19 +3,19 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/huyouba1/kde/configs"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/huyouba1/kde/pkg/api/handler"
 	"github.com/huyouba1/kde/pkg/storage"
-	"github.com/huyouba1/kde/pkg/storage/config"
 	"github.com/huyouba1/kde/pkg/storage/models"
 )
 
 // Server API服务器
 type Server struct {
-	config          *config.Config
+	config          *configs.Config
 	router          *gin.Engine
 	httpServer      *http.Server
 	storageFactory  *storage.Factory
@@ -23,7 +23,8 @@ type Server struct {
 }
 
 // NewServer 创建一个新的API服务器
-func NewServer(cfg *config.Config) (*Server, error) {
+// func NewServer(cfg *configs.Config) (*Server, error) {
+func NewServer(cfg *configs.Config) (*Server, error) {
 	// 创建Gin路由器
 	router := gin.Default()
 

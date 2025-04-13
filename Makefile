@@ -13,11 +13,11 @@ gen: ## Init Service
 
 
 tidy:
-	~/go/go1.24.0/bin/go mod tidy
+	go mod tidy
 
 run:
-	@~/go/go1.24.0/bin/go run cmd/server/main.go
+	@go run cmd/server/main.go
 
 linux:
-	@GOOS=linux GOARCH=amd64 ~/go/go1.24.0/bin/go build -a -o build/${OUTPUT_NAME} -ldflags "-s -w" -ldflags "-X '${VERSION_PATH}.GIT_BRANCH=${BUILD_BRANCH}' -X '${VERSION_PATH}.GIT_COMMIT=${BUILD_COMMIT}' -X '${VERSION_PATH}.BUILD_TIME=${BUILD_TIME}' -X '${VERSION_PATH}.GO_VERSION=${BUILD_GO_VERSION}'" ${MAIN_FILE}
+	@GOOS=linux GOARCH=amd64 go build -a -o build/${OUTPUT_NAME} -ldflags "-s -w" -ldflags "-X '${VERSION_PATH}.GIT_BRANCH=${BUILD_BRANCH}' -X '${VERSION_PATH}.GIT_COMMIT=${BUILD_COMMIT}' -X '${VERSION_PATH}.BUILD_TIME=${BUILD_TIME}' -X '${VERSION_PATH}.GO_VERSION=${BUILD_GO_VERSION}'" ${MAIN_FILE}
 
