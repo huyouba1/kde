@@ -10,6 +10,7 @@ import (
 	"github.com/huyouba1/kde/pkg/api/handler"
 	"github.com/huyouba1/kde/pkg/storage"
 	"github.com/huyouba1/kde/pkg/storage/config"
+	"github.com/huyouba1/kde/pkg/storage/models"
 )
 
 // Server API服务器
@@ -17,12 +18,12 @@ type Server struct {
 	config          *config.Config
 	router          *gin.Engine
 	httpServer      *http.Server
-	storageFactory  storage.Factory
+	storageFactory  *storage.Factory
 	templateHandler *handler.TemplateHandler
 }
 
 // NewServer 创建一个新的API服务器
-func NewServer(cfg *config.Config) *Server {
+func NewServer(cfg *config.Config) (*Server, error) {
 	// 创建Gin路由器
 	router := gin.Default()
 
@@ -32,10 +33,13 @@ func NewServer(cfg *config.Config) *Server {
 	// 创建模板处理器
 	templateHandler, err := handler.NewTemplateHandler()
 	if err != nil {
-		panic(fmt.Sprintf("初始化模板处理器失败: %v", err))
+		return nil, fmt.Errorf("failed to create template handler: %w", err)
 	}
 
-	// 设置HTML模板
+	// 设置静态文件服务
+	router.Static("/static", "pkg/api/handler/static")
+
+	// 设置模板渲染
 	router.SetHTMLTemplate(templateHandler.GetTemplates())
 
 	// 创建服务器
@@ -49,14 +53,11 @@ func NewServer(cfg *config.Config) *Server {
 	// 初始化路由
 	server.initRoutes()
 
-	return server
+	return server, nil
 }
 
 // initRoutes 初始化API路由
 func (s *Server) initRoutes() {
-	// 静态文件服务
-	s.router.Static("/static", "static")
-
 	// 前端页面路由
 	s.router.GET("/", s.handleIndex)
 	s.router.GET("/clusters", s.handleClusters)
@@ -138,11 +139,22 @@ func (s *Server) Stop() error {
 
 // 页面处理函数
 func (s *Server) handleIndex(c *gin.Context) {
-	c.HTML(http.StatusOK, "base.html", gin.H{
-		"Active":          "dashboard",
-		"ClusterCount":    0, // TODO: 从存储中获取实际数据
-		"DeploymentCount": 0,
-		"SystemStatus":    "正常",
+	// 获取集群数量
+	var clusterCount int64
+	if err := s.storageFactory.GetDB().Model(&models.ClusterModel{}).Count(&clusterCount).Error; err != nil {
+		clusterCount = 0
+	}
+
+	// 获取部署数量（TODO: 实现实际的部署计数）
+	deploymentCount := 0
+
+	// 检查系统状态
+	systemHealthy := true // TODO: 实现实际的健康检查
+
+	c.HTML(http.StatusOK, "index.html", gin.H{
+		"ClusterCount":    clusterCount,
+		"DeploymentCount": deploymentCount,
+		"SystemHealthy":   systemHealthy,
 	})
 }
 

@@ -8,38 +8,54 @@ server:
 # 数据库配置
 database:
   # 数据库类型: sqlite 或 etcd
-  type: sqlite
+  type: "sqlite"
   # SQLite配置
   sqlite:
-    path: ./data/kde.db
+    path: "data/kde.db"
   # etcd配置
   etcd:
     endpoints:
-      - http://localhost:2379
+      - "localhost:2379"
     dialTimeout: 5
 
 # Kubernetes部署配置
 deploy:
   # Ansible配置
   ansible:
-    inventoryPath: ./configs/ansible/inventory
-    playbooksPath: ./pkg/deploy/ansible/playbooks
+    inventoryPath: "configs/ansible/inventory"
+    playbooksPath: "pkg/deploy/ansible/playbooks"
   # 容器配置
   container:
-    registry: docker.io
-    namespace: kde
+    registry: "docker.io"
+    namespace: "kde"
 
 # 应用交付配置
 delivery:
   # Helm配置
   helm:
-    repoUrl: https://charts.helm.sh/stable
-    cachePath: ./data/helm-cache
+    repoUrl: "https://charts.helm.sh/stable"
+    cachePath: "data/helm-cache"
   # 工作目录
-  workdir: ./data/workdir
+  workdir: "data/workdir"
 
 # 日志配置
 log:
-  level: "info"
+  level: "debug"
   format: "text"
   output: "stdout"
+
+# 认证配置
+auth:
+  jwt_secret: "your-jwt-secret-key"
+  token_expiry: "24h"
+
+# Kubernetes配置
+kubernetes:
+  config_path: ""  # 留空使用默认的 kubeconfig 路径
+  in_cluster: false  # 是否在集群内运行
+
+# 缓存配置
+cache:
+  type: "memory"
+  size: 1000
+  ttl: "1h"

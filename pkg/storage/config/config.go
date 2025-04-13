@@ -2,105 +2,137 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
 
-	"gopkg.in/yaml.v2"
+	"github.com/spf13/viper"
 )
 
-// Config 表示系统的配置结构
+// Config 应用配置
 type Config struct {
-	Server   ServerConfig   `yaml:"server"`
-	Database DatabaseConfig `yaml:"database"`
-	Deploy   DeployConfig   `yaml:"deploy"`
-	Delivery DeliveryConfig `yaml:"delivery"`
-	Log      LogConfig      `yaml:"log"`
+	Server     ServerConfig     `mapstructure:"server"`
+	Database   DatabaseConfig   `mapstructure:"database"`
+	Deploy     DeployConfig     `mapstructure:"deploy"`
+	Delivery   DeliveryConfig   `mapstructure:"delivery"`
+	Log        LogConfig        `mapstructure:"log"`
+	Auth       AuthConfig       `mapstructure:"auth"`
+	Kubernetes KubernetesConfig `mapstructure:"kubernetes"`
+	Cache      CacheConfig      `mapstructure:"cache"`
 }
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Port int    `yaml:"port"`
-	Host string `yaml:"host"`
+	Port int    `mapstructure:"port"`
+	Host string `mapstructure:"host"`
 }
 
 // DatabaseConfig 数据库配置
 type DatabaseConfig struct {
-	Type   string       `yaml:"type"`
-	SQLite SQLiteConfig `yaml:"sqlite"`
-	Etcd   EtcdConfig   `yaml:"etcd"`
+	Type   string       `mapstructure:"type"`
+	SQLite SQLiteConfig `mapstructure:"sqlite"`
+	Etcd   EtcdConfig   `mapstructure:"etcd"`
 }
 
 // SQLiteConfig SQLite数据库配置
 type SQLiteConfig struct {
-	Path string `yaml:"path"`
+	Path string `mapstructure:"path"`
 }
 
 // EtcdConfig etcd配置
 type EtcdConfig struct {
-	Endpoints   []string `yaml:"endpoints"`
-	DialTimeout int      `yaml:"dialTimeout"`
+	Endpoints   []string `mapstructure:"endpoints"`
+	DialTimeout int      `mapstructure:"dialTimeout"`
 }
 
 // DeployConfig 部署配置
 type DeployConfig struct {
-	Ansible   AnsibleConfig   `yaml:"ansible"`
-	Container ContainerConfig `yaml:"container"`
+	Ansible   AnsibleConfig   `mapstructure:"ansible"`
+	Container ContainerConfig `mapstructure:"container"`
 }
 
 // AnsibleConfig Ansible配置
 type AnsibleConfig struct {
-	InventoryPath string `yaml:"inventoryPath"`
-	PlaybooksPath string `yaml:"playbooksPath"`
+	InventoryPath string `mapstructure:"inventoryPath"`
+	PlaybooksPath string `mapstructure:"playbooksPath"`
 }
 
 // ContainerConfig 容器配置
 type ContainerConfig struct {
-	Registry  string `yaml:"registry"`
-	Namespace string `yaml:"namespace"`
+	Registry  string `mapstructure:"registry"`
+	Namespace string `mapstructure:"namespace"`
 }
 
 // DeliveryConfig 应用交付配置
 type DeliveryConfig struct {
-	Helm    HelmConfig `yaml:"helm"`
-	Workdir string     `yaml:"workdir"`
+	Helm    HelmConfig `mapstructure:"helm"`
+	Workdir string     `mapstructure:"workdir"`
 }
 
 // HelmConfig Helm配置
 type HelmConfig struct {
-	RepoUrl   string `yaml:"repoUrl"`
-	CachePath string `yaml:"cachePath"`
+	RepoUrl   string `mapstructure:"repoUrl"`
+	CachePath string `mapstructure:"cachePath"`
 }
 
 // LogConfig 日志配置
 type LogConfig struct {
-	Level      string `yaml:"level"`
-	Path       string `yaml:"path"`
-	Filename   string `yaml:"filename"`
-	MaxSize    int    `yaml:"maxSize"`
-	MaxBackups int    `yaml:"maxBackups"`
-	MaxAge     int    `yaml:"maxAge"`
-	Compress   bool   `yaml:"compress"`
+	Level  string `mapstructure:"level"`
+	Format string `mapstructure:"format"`
+	Output string `mapstructure:"output"`
 }
 
-// LoadConfig 从文件加载配置
-func LoadConfig(path string) (*Config, error) {
-	cfg := &Config{}
+// AuthConfig 认证配置
+type AuthConfig struct {
+	JWTSecret   string `mapstructure:"jwt_secret"`
+	TokenExpiry string `mapstructure:"token_expiry"`
+}
 
-	// 检查文件是否存在
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return nil, fmt.Errorf("配置文件不存在: %s", path)
+// KubernetesConfig Kubernetes配置
+type KubernetesConfig struct {
+	ConfigPath string `mapstructure:"config_path"`
+	InCluster  bool   `mapstructure:"in_cluster"`
+}
+
+// CacheConfig 缓存配置
+type CacheConfig struct {
+	Type string `mapstructure:"type"`
+	Size int    `mapstructure:"size"`
+	TTL  string `mapstructure:"ttl"`
+}
+
+// LoadConfig 加载配置文件
+func LoadConfig(configPath string) (*Config, error) {
+	viper.SetConfigFile(configPath)
+
+	if err := viper.ReadInConfig(); err != nil {
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	// 读取配置文件
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("读取配置文件失败: %v", err)
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
 	}
 
-	// 解析YAML
-	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return nil, fmt.Errorf("解析配置文件失败: %v", err)
+	// 设置默认值
+	if config.Server.Port == 0 {
+		config.Server.Port = 8080
+	}
+	if config.Server.Host == "" {
+		config.Server.Host = "0.0.0.0"
+	}
+	if config.Database.Type == "" {
+		config.Database.Type = "sqlite"
+	}
+	if config.Database.SQLite.Path == "" {
+		config.Database.SQLite.Path = "data/kde.db"
+	}
+	if config.Log.Level == "" {
+		config.Log.Level = "info"
+	}
+	if config.Log.Format == "" {
+		config.Log.Format = "text"
+	}
+	if config.Log.Output == "" {
+		config.Log.Output = "stdout"
 	}
 
-	return cfg, nil
+	return &config, nil
 }

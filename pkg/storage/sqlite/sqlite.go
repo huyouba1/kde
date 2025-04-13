@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/huyouba1/kde/pkg/storage/config"
+	"github.com/huyouba1/kde/pkg/storage/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -31,6 +32,11 @@ func NewManager(cfg *config.SQLiteConfig) (*Manager, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("连接SQLite数据库失败: %v", err)
+	}
+
+	// 自动迁移数据库模型
+	if err := db.AutoMigrate(&models.ClusterModel{}, &models.NodeModel{}); err != nil {
+		return nil, fmt.Errorf("迁移数据库模型失败: %v", err)
 	}
 
 	return &Manager{

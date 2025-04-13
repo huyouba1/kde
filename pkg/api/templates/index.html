@@ -1,92 +1,58 @@
+{{template "base.html" .}}
+
+{{define "title"}}仪表盘{{end}}
+
 {{define "content"}}
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <h2>仪表盘</h2>
-            <p class="text-muted">系统概览</p>
-        </div>
-    </div>
-
-    <!-- 状态卡片 -->
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-server fa-2x text-primary"></i>
-                        </div>
-                        <div class="ms-3">
-                            <h6 class="card-subtitle mb-1 text-muted">集群数量</h6>
-                            <h2 class="card-title mb-0">{{.ClusterCount}}</h2>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-rocket fa-2x text-success"></i>
-                        </div>
-                        <div class="ms-3">
-                            <h6 class="card-subtitle mb-1 text-muted">部署数量</h6>
-                            <h2 class="card-title mb-0">{{.DeploymentCount}}</h2>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex align-items-center">
-                        <div class="flex-shrink-0">
-                            <i class="fas fa-check-circle fa-2x text-info"></i>
-                        </div>
-                        <div class="ms-3">
-                            <h6 class="card-subtitle mb-1 text-muted">系统状态</h6>
-                            <h2 class="card-title mb-0">{{.SystemStatus}}</h2>
-                        </div>
-                    </div>
-                </div>
+<div class="row">
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">集群数量</h5>
+                <p class="card-text display-4" id="clusterCount">{{.ClusterCount}}</p>
             </div>
         </div>
     </div>
-
-    <!-- 快速操作 -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">快速操作</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <button class="btn btn-primary w-100 mb-3" onclick="window.location.href='/clusters'">
-                                <i class="fas fa-plus me-2"></i>创建集群
-                            </button>
-                        </div>
-                        <div class="col-md-4">
-                            <button class="btn btn-success w-100 mb-3" onclick="window.location.href='/deployments'">
-                                <i class="fas fa-rocket me-2"></i>部署应用
-                            </button>
-                        </div>
-                        <div class="col-md-4">
-                            <button class="btn btn-info w-100 mb-3" onclick="window.location.href='/settings'">
-                                <i class="fas fa-cog me-2"></i>系统设置
-                            </button>
-                        </div>
-                    </div>
-                </div>
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">部署数量</h5>
+                <p class="card-text display-4" id="deploymentCount">{{.DeploymentCount}}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">系统状态</h5>
+                <p class="card-text display-4" id="systemStatus">
+                    {{if .SystemHealthy}}
+                    <i class="fas fa-check-circle text-success"></i>
+                    {{else}}
+                    <i class="fas fa-exclamation-circle text-danger"></i>
+                    {{end}}
+                </p>
             </div>
         </div>
     </div>
 </div>
 
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">快速操作</h5>
+                <div class="d-grid gap-2">
+                    <a href="/clusters/new" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> 添加集群
+                    </a>
+                    <a href="/deployments/new" class="btn btn-success">
+                        <i class="fas fa-rocket"></i> 新建部署
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {{end}}
 
 {{define "scripts"}}
@@ -96,17 +62,20 @@ function updateDashboard() {
     fetch('/api/v1/dashboard')
         .then(response => response.json())
         .then(data => {
-            document.querySelector('[data-metric="clusterCount"]').textContent = data.clusterCount;
-            document.querySelector('[data-metric="deploymentCount"]').textContent = data.deploymentCount;
-            document.querySelector('[data-metric="systemStatus"]').textContent = data.systemStatus;
+            document.getElementById('clusterCount').textContent = data.clusterCount;
+            document.getElementById('deploymentCount').textContent = data.deploymentCount;
+            
+            const statusIcon = document.getElementById('systemStatus');
+            if (data.systemHealthy) {
+                statusIcon.innerHTML = '<i class="fas fa-check-circle text-success"></i>';
+            } else {
+                statusIcon.innerHTML = '<i class="fas fa-exclamation-circle text-danger"></i>';
+            }
         })
         .catch(error => console.error('Error updating dashboard:', error));
 }
 
 // 每30秒更新一次数据
 setInterval(updateDashboard, 30000);
-
-// 页面加载时立即更新一次
-document.addEventListener('DOMContentLoaded', updateDashboard);
 </script>
 {{end}} 

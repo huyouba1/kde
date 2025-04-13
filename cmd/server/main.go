@@ -40,7 +40,11 @@ func main() {
 
 	fmt.Println("Kubernetes管理系统服务启动中...")
 	// 创建并启动服务器
-	server := api.NewServer(cfg)
+	server, err := api.NewServer(cfg)
+	if err != nil {
+		log.Fatalf("创建服务器失败: %v", err)
+	}
+
 	if err := server.Start(); err != nil {
 		log.Fatalf("服务器启动失败: %v", err)
 	}
